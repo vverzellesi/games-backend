@@ -23,6 +23,10 @@ export class GamesService {
 
       const publisher = await this.publisherService.getPublisherById(createGameDto.publisherId);
 
+      if (!publisher) {
+        throw new NotFoundException('No publisher found.');
+      }
+
       const newGame = new this.gameModel({
         title,
         price,
