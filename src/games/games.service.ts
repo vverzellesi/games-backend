@@ -2,11 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ObjectId } from 'mongoose';
+import { Model } from 'mongoose';
 import { Game } from './entities/game.entity';
 import { GameDocument } from './schemas/game.schema';
 import { PublishersService } from 'src/publishers/publishers.service';
 import { Publisher } from 'src/publishers/schemas/publisher.schema';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import * as moment from 'moment';
 
 @Injectable()
 export class GamesService {
@@ -56,12 +58,53 @@ export class GamesService {
   }
 
   async update(id: string, updateGameDto: UpdateGameDto) {
-    Logger.log(`Updating game ${id}...`);
-    return await this.gameModel.findByIdAndUpdate(id, updateGameDto, { upsert: true });
+    try {
+      Logger.log(`Updating game ${id}...`);
+      return await this.gameModel.findByIdAndUpdate(id, { $set: updateGameDto });
+    } catch (error) {
+      throw new NotFoundException('Could not find the specified game.');
+    }
   }
 
   async remove(id: string) {
     Logger.log(`Removing game ${id}...`);
     return await this.gameModel.deleteOne({ _id: id });
+  }
+
+  @Cron(CronExpression.EVERY_WEEK)
+  async handleOldGames() {
+    const date12MonthsAgo = moment().subtract(12, 'months').toISOString();
+    const date18MonthsAgo = moment().subtract(18, 'months').toISOString();
+
+    // removes games older than 18 months
+    const gamesToRemove = await this.gameModel.find({
+      releaseDate: {
+        $lte: date18MonthsAgo,
+      }
+    });
+
+    for (const game of gamesToRemove) {
+      Logger.log('Removing old game...', game);
+      await this.remove(game._id.toString());
+    }
+
+    // apply a 20% discount to games released between 12 and 18 months ago
+    const gamesToAddDiscount = await this.gameModel.find({
+      discounted: false,
+      releaseDate: {
+        $lte: date12MonthsAgo,
+        $gt: date18MonthsAgo,
+      }
+    }).populate('publisher');
+
+    for (const game of gamesToAddDiscount) {
+      Logger.log('Adding discount to game...', game);
+
+      const discountedPrice = game.price * 0.8;
+      await this.update(game._id.toString(), {
+        price: discountedPrice, discounted: true
+      });
+    }
+
   }
 }

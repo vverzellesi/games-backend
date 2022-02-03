@@ -12,6 +12,9 @@ export class Game {
     @Prop()
     price: number;
 
+    @Prop({ default: false })
+    discounted: boolean;
+
     @Prop()
     tags: string[];
 
