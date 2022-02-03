@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { GamesService } from './games.service';
 import { CreateGameDto } from './dto/create-game.dto';
@@ -26,8 +27,10 @@ export class GamesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.gamesService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Query('publisherOnly') publisherOnly: boolean) {
+    return this.gamesService.findOne(id, publisherOnly);
   }
 
   @Patch(':id')

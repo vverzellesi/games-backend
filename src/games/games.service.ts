@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { Game } from './entities/game.entity';
 import { GameDocument } from './schemas/game.schema';
 import { PublishersService } from 'src/publishers/publishers.service';
+import { Publisher } from 'src/publishers/schemas/publisher.schema';
 
 @Injectable()
 export class GamesService {
@@ -28,32 +29,39 @@ export class GamesService {
     });
     const result = await newGame.save();
 
-    console.log('Inserting new game...', result);
+    Logger.log('Inserting new game...', result);
 
     return result.id;
   }
 
   async findAll(): Promise<GameDocument[]> {
-    console.log('Getting all games...');
+    Logger.log('Getting all games...');
     return await this.gameModel.find().populate('publisher');
   }
 
-  async findOne(id: string): Promise<GameDocument> {
+  async findOne(id: string, publisherOnly: boolean): Promise<GameDocument | Publisher> {
     try {
-      console.log(`Finding game by id ${id}...`);
-      return await this.gameModel.findById(id).populate('publisher');
+      const game = await this.gameModel.findById(id).populate('publisher');
+
+      if (publisherOnly) {
+        Logger.log(`Fetching Publisher data for game ${id}...`);
+        return game.publisher;
+      }
+
+      Logger.log(`Finding game by id ${id}...`);
+      return game;
     } catch (error) {
       throw new NotFoundException('Could not find the specified game.');
     }
   }
 
   async update(id: string, updateGameDto: UpdateGameDto) {
-    console.log(`Updating game ${id}...`);
+    Logger.log(`Updating game ${id}...`);
     return await this.gameModel.findByIdAndUpdate(id, updateGameDto, { upsert: true });
   }
 
   async remove(id: string) {
-    console.log(`Removing game ${id}...`);
+    Logger.log(`Removing game ${id}...`);
     return await this.gameModel.deleteOne({ _id: id });
   }
 }

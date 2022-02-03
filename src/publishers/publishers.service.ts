@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { CreatePublisherDto } from './dto/create-publisher.dto';
@@ -12,11 +12,11 @@ export class PublishersService {
         return await this.publisherModel.findById(id);
     }
 
-    async create(createPublisherDto: CreatePublisherDto): Promise<string> {
+    async create(createPublisherDto: CreatePublisherDto): Promise<ObjectId> {
         const newPublisher = new this.publisherModel(createPublisherDto);
         const result = await newPublisher.save();
 
-        console.log('Inserting new publisher...', result);
+        Logger.log('Inserting new publisher...', result);
 
         return result.id;
     }
