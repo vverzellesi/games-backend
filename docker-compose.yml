@@ -1,11 +1,25 @@
-# docker-compose.yml
-version: '3.1' #format version for this docker compose file
+version: '3'
 services:
-  mongo-container:
-    image: mongo:latest
+  games-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    container_name: games-backend
+    restart: always
+    volumes:
+      - ./:/usr/src/app
+      - server_node_modules:/usr/src/app/node_modules
+  mongodb:
+    image: mongo:5.0
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=pass
     ports:
       - "27017:27017"
     command: mongod
+    volumes:
+      - ./data/mongo:/data/db
+volumes:
+  server_node_modules:

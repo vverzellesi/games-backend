@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpCode, HttpException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -18,22 +18,28 @@ export class GamesService {
   ) { }
 
   async create(createGameDto: CreateGameDto): Promise<string> {
-    const { title, price, tags, releaseDate } = createGameDto;
+    try {
+      const { title, price, tags, releaseDate } = createGameDto;
 
-    const publisher = await this.publisherService.getPublisherById(createGameDto.publisherId);
+      const publisher = await this.publisherService.getPublisherById(createGameDto.publisherId);
 
-    const newGame = new this.gameModel({
-      title,
-      price,
-      tags,
-      releaseDate,
-      publisher,
-    });
-    const result = await newGame.save();
+      const newGame = new this.gameModel({
+        title,
+        price,
+        tags,
+        releaseDate,
+        publisher,
+      });
+      const result = await newGame.save();
 
-    Logger.log('Inserting new game...', result);
+      Logger.log('Inserting new game...', result);
 
-    return result.id;
+      return result.id;
+    } catch (error) {
+      const errorMessage = 'Error to create new game...';
+      Logger.error(errorMessage, error);
+      throw new Error(errorMessage);
+    }
   }
 
   async findAll(): Promise<GameDocument[]> {
@@ -53,6 +59,7 @@ export class GamesService {
       Logger.log(`Finding game by id ${id}...`);
       return game;
     } catch (error) {
+      Logger.error(`Error to find game ${id}`, error);
       throw new NotFoundException('Could not find the specified game.');
     }
   }
@@ -67,11 +74,16 @@ export class GamesService {
   }
 
   async remove(id: string) {
-    Logger.log(`Removing game ${id}...`);
-    return await this.gameModel.deleteOne({ _id: id });
+    try {
+      Logger.log(`Removing game ${id}...`);
+      return await this.gameModel.deleteOne({ _id: id });
+    } catch (error) {
+      Logger.error(`Error to delete game ${id}`);
+      throw new NotFoundException('Could not delete the specified game.');
+    }
   }
 
-  @Cron(CronExpression.EVERY_WEEK)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleOldGames() {
     const date12MonthsAgo = moment().subtract(12, 'months').toISOString();
     const date18MonthsAgo = moment().subtract(18, 'months').toISOString();
@@ -88,7 +100,7 @@ export class GamesService {
       await this.remove(game._id.toString());
     }
 
-    // apply a 20% discount to games released between 12 and 18 months ago
+    // applies a 20% discount to games released between 12 and 18 months ago
     const gamesToAddDiscount = await this.gameModel.find({
       discounted: false,
       releaseDate: {

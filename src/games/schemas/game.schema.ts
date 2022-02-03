@@ -6,10 +6,10 @@ export type GameDocument = Game & Document;
 
 @Schema()
 export class Game {
-    @Prop()
+    @Prop({ required: true })
     title: string;
 
-    @Prop()
+    @Prop({ required: true })
     price: number;
 
     @Prop({ default: false })
@@ -18,7 +18,7 @@ export class Game {
     @Prop()
     tags: string[];
 
-    @Prop()
+    @Prop({ required: true })
     releaseDate: Date;
 
     @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Publisher.name })
